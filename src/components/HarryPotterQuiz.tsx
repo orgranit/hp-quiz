@@ -3,32 +3,13 @@
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Question } from '@/types/quiz';
 
-interface Question {
-  text: string;
-  options: string[];
-  correctAnswer: string;
-  hebrewTranslation: string;
-  hint: string;
+interface HarryPotterQuizProps {
+  questions: Question[];
 }
 
-const quizData: Question[] = [
-  {
-    text: "What is Harry Potter's address at the Dursleys?",
-    options: [
-      "4 Privet Drive",
-      "2 Magnolia Crescent",
-      "7 Wisteria Walk",
-      "9 Petunia Lane"
-    ],
-    correctAnswer: "4 Privet Drive",
-    hebrewTranslation: "רחוב פריווט 4",
-    hint: "It's a number followed by a plant-related street name."
-  },
-  // Add 9 more questions here...
-];
-
-const HarryPotterQuiz: React.FC = () => {
+const HarryPotterQuiz: React.FC<HarryPotterQuizProps> = ({ questions }) => {
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [showHint, setShowHint] = useState(false);
@@ -42,7 +23,7 @@ const HarryPotterQuiz: React.FC = () => {
 
   const handleSubmit = () => {
     if (selectedAnswer) {
-      if (selectedAnswer === quizData[currentQuestion].correctAnswer) {
+      if (selectedAnswer === questions[currentQuestion].correctAnswer) {
         setScore(score + 1);
       }
       setShowResult(true);
@@ -50,7 +31,7 @@ const HarryPotterQuiz: React.FC = () => {
   };
 
   const handleNextQuestion = () => {
-    if (currentQuestion < quizData.length - 1) {
+    if (currentQuestion < questions.length - 1) {
       setCurrentQuestion(currentQuestion + 1);
       setSelectedAnswer(null);
       setShowHint(false);
@@ -76,14 +57,14 @@ const HarryPotterQuiz: React.FC = () => {
           <CardTitle>Quiz Completed!</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-lg mb-4">Your score: {score} / {quizData.length}</p>
+          <p className="text-lg mb-4">Your score: {score} / {questions.length}</p>
           <Button onClick={handleRestart} className="w-full">Restart Quiz</Button>
         </CardContent>
       </Card>
     );
   }
 
-  const currentQuestionData = quizData[currentQuestion];
+  const currentQuestionData = questions[currentQuestion];
 
   return (
     <Card className="w-full max-w-md mx-auto">
@@ -91,7 +72,7 @@ const HarryPotterQuiz: React.FC = () => {
         <CardTitle>Harry Potter Quiz</CardTitle>
       </CardHeader>
       <CardContent>
-        <p className="text-lg mb-4">Question {currentQuestion + 1} of {quizData.length}</p>
+        <p className="text-lg mb-4">Question {currentQuestion + 1} of {questions.length}</p>
         <p className="text-xl mb-4">{currentQuestionData.text}</p>
         <div className="space-y-2">
           {currentQuestionData.options.map((option, index) => (
@@ -124,11 +105,11 @@ const HarryPotterQuiz: React.FC = () => {
             <p className="mt-2">Correct answer: {currentQuestionData.correctAnswer}</p>
             <p className="mt-1">Hebrew translation: {currentQuestionData.hebrewTranslation}</p>
             <Button onClick={handleNextQuestion} className="w-full mt-4">
-              {currentQuestion < quizData.length - 1 ? "Next Question" : "Finish Quiz"}
+              {currentQuestion < questions.length - 1 ? "Next Question" : "Finish Quiz"}
             </Button>
           </div>
         )}
-        <p className="mt-4 text-sm">Score: {score} / {quizData.length}</p>
+        <p className="mt-4 text-sm">Score: {score} / {questions.length}</p>
       </CardContent>
     </Card>
   );
