@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import QuizWizard, { WizardData } from '@/components/QuizWizard';
+import QuizWizard, { WizardData } from '@/components/QuizWizard/QuizWizard';
 import HarryPotterQuiz from '@/components/HarryPotterQuiz';
 import { Question } from '@/types/quiz';
 

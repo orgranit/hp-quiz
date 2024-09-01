@@ -1,31 +1,28 @@
-import { NextResponse } from 'next/server';
+import type { NextApiRequest, NextApiResponse } from 'next'
 import OpenAI from 'openai';
 import { Question } from '@/types/quiz';
 import { WizardData } from '@/components/QuizWizard/QuizWizard';
 
-const apiKey = process.env.OPENAI_API_KEY;
-
-if (!apiKey) {
-  console.error('OPENAI_API_KEY is not set in the environment variables');
-}
-
 const openai = new OpenAI({
-  apiKey: apiKey || 'dummy_key', // Fallback to a dummy key to prevent instantiation error
+  apiKey: process.env.OPENAI_API_KEY,
 });
 
-export async function POST(request: Request) {
-  if (!apiKey) {
-    return NextResponse.json({ error: 'OpenAI API key is not set. Please check your environment variables.' }, { status: 500 });
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse<Question[] | { error: string }>
+) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  const data: WizardData = await request.json();
+  const data: WizardData = req.body;
 
   try {
     const questions = await generateQuestions(data);
-    return NextResponse.json(questions);
+    res.status(200).json(questions);
   } catch (error) {
     console.error('Failed to generate questions:', error);
-    return NextResponse.json({ error: 'Failed to generate questions' }, { status: 500 });
+    res.status(500).json({ error: 'Failed to generate questions' });
   }
 }
 
