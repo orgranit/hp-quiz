@@ -5,6 +5,8 @@ import { WizardData } from '@/components/QuizWizard/QuizWizard';
 import { harryPotterBooks } from '@/data/harryPotterBooks';
 import { supabase } from '@/lib/supabaseClient';
 
+export const runtime = 'edge'; // Use Edge Runtime
+
 const apiKey = process.env.OPENAI_API_KEY;
 
 if (!apiKey) {
@@ -33,24 +35,27 @@ export async function POST(request: Request) {
 
     if (questions.length < requiredQuestions) {
       console.log(`Generating ${requiredQuestions - questions.length} additional questions from OpenAI...`);
-      const additionalQuestions = await generateQuestions(data, requiredQuestions - questions.length);
-      console.log(`Generated ${additionalQuestions.length} questions from OpenAI`);
-      await storeQuestionsInDB(data, additionalQuestions);
-      
-      // Convert OpenAIQuestionResponse to Question
-      const convertedQuestions: Question[] = additionalQuestions.map(q => ({
-        ...q,
-        pageStart: parseInt(q.pageRange.split('-')[0], 10),
-        pageEnd: parseInt(q.pageRange.split('-')[1], 10),
-      }));
-      
-      questions = [...questions, ...convertedQuestions];
+      try {
+        const additionalQuestions = await generateQuestions(data, requiredQuestions - questions.length);
+        await storeQuestionsInDB(data, additionalQuestions);
+        
+        const convertedQuestions: Question[] = additionalQuestions.map(q => ({
+          ...q,
+          pageStart: parseInt(q.pageRange.split('-')[0], 10),
+          pageEnd: parseInt(q.pageRange.split('-')[1], 10),
+        }));
+        
+        questions = [...questions, ...convertedQuestions];
+      } catch (generateError) {
+        console.error('Error generating additional questions:', generateError);
+        // Continue with the questions we have from the database
+      }
     }
 
     return NextResponse.json(questions);
   } catch (error) {
-    console.error('Failed to generate questions:', error);
-    return NextResponse.json({ error: 'Failed to generate questions' }, { status: 500 });
+    console.error('Failed to process questions:', error);
+    return NextResponse.json({ error: 'Failed to process questions' }, { status: 500 });
   }
 }
 
@@ -129,13 +134,8 @@ async function generateQuestions(data: WizardData, numQuestions: number): Promis
     throw new Error('Book not found');
   }
 
-  const selectedChapters = book.chapters.filter(c => chapters.includes(c.id));
-
-  const chapterInfo = selectedChapters.map(c => `${c.id}: ${c.title}`).join(', ');
-
-  const pageInfo = pages 
-    ? `pages ${pages.join('-')}` 
-    : 'all pages';
+  const chapterInfo = chapters.join(', ');
+  const pageInfo = pages ? `${pages[0]}-${pages[1]}` : 'all';
 
   const prompt = `Generate ${numQuestions} multiple-choice questions about ${book.title}, focusing on ${chapterInfo}, ${pageInfo}. 
 
@@ -161,15 +161,53 @@ Format the response as a JSON array of objects with the following structure:
   chapterIds: number[] 
 }`;
 
-  console.log('Sending prompt to OpenAI:', prompt);
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4-1106-preview", // Using the latest and most capable model
+      messages: [{ role: "user", content: prompt }],
+      response_format: { type: "json_object" }, // Ensure JSON response
+    });
 
-  const response = await openai.chat.completions.create({
-    model: "gpt-4",
-    messages: [{ role: "user", content: prompt }],
+    const content = response.choices[0].message.content;
+    console.log('OpenAI response content:', content);
+
+    if (!content) {
+      throw new Error('Empty response from OpenAI');
+    }
+
+    const parsedQuestions: OpenAIQuestionResponse[] = JSON.parse(content).questions;
+    return parsedQuestions;
+  } catch (error) {
+    console.error('Error generating questions:', error);
+    throw error;
+  }
+}
+
+function parseQuestions(content: string): OpenAIQuestionResponse[] {
+  const questions = content.split(/\d+\.\s/).filter(q => q.trim() !== '');
+  return questions.map(q => {
+    const lines = q.split('\n').map(line => line.trim()).filter(line => line !== '');
+    const text = lines[0];
+    const options = lines.slice(1, 5).map(option => option.substring(3));
+    const answerLine = lines.find(line => line.startsWith('Answer:'));
+    const correctAnswer = answerLine ? answerLine.split(':')[1].trim() : '';
+    const hebrewTranslationLine = lines.find(line => line.startsWith('Hebrew translation:'));
+    const hebrewTranslation = hebrewTranslationLine ? hebrewTranslationLine.split(':')[1].trim() : '';
+    const hintLine = lines.find(line => line.startsWith('Hint:'));
+    const hint = hintLine ? hintLine.split(':')[1].trim() : '';
+    const pageRangeLine = lines.find(line => line.startsWith('Page range:'));
+    const pageRange = pageRangeLine ? pageRangeLine.split(':')[1].trim() : '';
+    const chapterIdsLine = lines.find(line => line.startsWith('Chapter IDs:'));
+    const chapterIds = chapterIdsLine ? chapterIdsLine.split(':')[1].trim().split(',').map(Number) : [];
+
+    return {
+      text,
+      options,
+      correctAnswer,
+      hebrewTranslation,
+      hint,
+      pageRange,
+      chapterIds,
+    };
   });
-
-  const generatedQuestions: OpenAIQuestionResponse[] = JSON.parse(response.choices[0].message.content || '[]');
-  console.log('Received response from OpenAI:', generatedQuestions);
-
-  return generatedQuestions;
 }
