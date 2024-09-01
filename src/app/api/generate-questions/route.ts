@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
-import { Question } from '@/types/quiz';
+import { Question, OpenAIQuestionResponse } from '@/types/quiz';
 import { WizardData } from '@/components/QuizWizard/QuizWizard';
 import { harryPotterBooks } from '@/data/harryPotterBooks';
 import { supabase } from '@/lib/supabaseClient';
@@ -36,7 +36,15 @@ export async function POST(request: Request) {
       const additionalQuestions = await generateQuestions(data, requiredQuestions - questions.length);
       console.log(`Generated ${additionalQuestions.length} questions from OpenAI`);
       await storeQuestionsInDB(data, additionalQuestions);
-      questions = [...questions, ...additionalQuestions];
+      
+      // Convert OpenAIQuestionResponse to Question
+      const convertedQuestions: Question[] = additionalQuestions.map(q => ({
+        ...q,
+        pageStart: parseInt(q.pageRange.split('-')[0], 10),
+        pageEnd: parseInt(q.pageRange.split('-')[1], 10),
+      }));
+      
+      questions = [...questions, ...convertedQuestions];
     }
 
     return NextResponse.json(questions);
@@ -85,20 +93,23 @@ async function getQuestionsFromDB(data: WizardData): Promise<Question[]> {
   }));
 }
 
-async function storeQuestionsInDB(data: WizardData, questions: Question[]): Promise<void> {
+async function storeQuestionsInDB(data: WizardData, questions: OpenAIQuestionResponse[]): Promise<void> {
   const { bookId } = data;
 
-  const formattedQuestions = questions.map(question => ({
-    book_id: bookId,
-    chapter_ids: question.chapterIds,
-    page_start: question.pageStart,
-    page_end: question.pageEnd,
-    question_text: question.text, // Note this field name
-    options: question.options,
-    correct_answer: question.correctAnswer,
-    hebrew_translation: question.hebrewTranslation,
-    hint: question.hint,
-  }));
+  const formattedQuestions = questions.map(question => {
+    const [pageStart, pageEnd] = question.pageRange.split('-').map(Number);
+    return {
+      book_id: bookId,
+      chapter_ids: question.chapterIds,
+      page_start: pageStart,
+      page_end: pageEnd,
+      question_text: question.text,
+      options: question.options,
+      correct_answer: question.correctAnswer,
+      hebrew_translation: question.hebrewTranslation,
+      hint: question.hint,
+    };
+  });
 
   const { error } = await supabase
     .from('questions')
@@ -110,7 +121,7 @@ async function storeQuestionsInDB(data: WizardData, questions: Question[]): Prom
   }
 }
 
-async function generateQuestions(data: WizardData, numQuestions: number): Promise<Question[]> {
+async function generateQuestions(data: WizardData, numQuestions: number): Promise<OpenAIQuestionResponse[]> {
   const { bookId, chapters, pages } = data;
   const book = harryPotterBooks.find(b => b.id === bookId);
   
@@ -157,12 +168,8 @@ Format the response as a JSON array of objects with the following structure:
     messages: [{ role: "user", content: prompt }],
   });
 
-  const generatedQuestions: Question[] = JSON.parse(response.choices[0].message.content || '[]');
+  const generatedQuestions: OpenAIQuestionResponse[] = JSON.parse(response.choices[0].message.content || '[]');
   console.log('Received response from OpenAI:', generatedQuestions);
 
-  return generatedQuestions.map(q => ({
-    ...q,
-    pageStart: q.pageRange ? parseInt(q.pageRange.split('-')[0], 10) : null,
-    pageEnd: q.pageRange ? parseInt(q.pageRange.split('-')[1], 10) : null,
-  }));
+  return generatedQuestions;
 }
