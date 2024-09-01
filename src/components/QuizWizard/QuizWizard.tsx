@@ -4,9 +4,11 @@ import ChapterSelection from './ChapterSelection';
 import PageSelection from './PageSelection';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import Loader from "@/components/ui/Loader";
+import { harryPotterBooks, Book, Chapter } from "@/data/harryPotterBooks";
 
 export interface WizardData {
-  bookNumber: number;
+  bookId: number;
   chapters: number[];
   pages?: [number, number];
 }
@@ -17,9 +19,10 @@ interface QuizWizardProps {
 
 const QuizWizard: React.FC<QuizWizardProps> = ({ onComplete }) => {
   const [step, setStep] = useState(1);
-  const [selectedBook, setSelectedBook] = useState<number | null>(null);
-  const [selectedChapters, setSelectedChapters] = useState<number[]>([]);
+  const [selectedBook, setSelectedBook] = useState<Book | null>(null);
+  const [selectedChapters, setSelectedChapters] = useState<Chapter[]>([]);
   const [selectedPages, setSelectedPages] = useState<[number, number] | null>(null);
+  const [loading, setLoading] = useState(false);
 
   const handleNext = () => {
     if (step < 3) setStep(step + 1);
@@ -31,19 +34,20 @@ const QuizWizard: React.FC<QuizWizardProps> = ({ onComplete }) => {
   };
 
   const handleComplete = () => {
-    if (selectedBook !== null) {
+    if (selectedBook) {
+      setLoading(true);
       onComplete({
-        bookNumber: selectedBook,
-        chapters: selectedChapters,
+        bookId: selectedBook.id,
+        chapters: selectedChapters.map(c => c.id),
         pages: selectedPages || undefined
       });
     }
   };
 
   const isNextDisabled = () => {
-    if (step === 1) return selectedBook === null;
+    if (step === 1) return !selectedBook;
     if (step === 2) return selectedChapters.length === 0;
-    if (step === 3 && selectedChapters.length === 1) return selectedPages === null;
+    if (step === 3 && selectedChapters.length === 1) return !selectedPages;
     return false;
   };
 
@@ -53,32 +57,43 @@ const QuizWizard: React.FC<QuizWizardProps> = ({ onComplete }) => {
         <CardTitle>Quiz Setup Wizard - Step {step}</CardTitle>
       </CardHeader>
       <CardContent>
-        {step === 1 && <BookSelection onSelect={setSelectedBook} selectedBook={selectedBook} />}
-        {step === 2 && selectedBook && (
-          <ChapterSelection 
-            onSelect={setSelectedChapters} 
-            selectedChapters={selectedChapters} 
-            selectedBook={selectedBook}
-          />
+        {loading ? (
+          <Loader />
+        ) : (
+          <>
+            {step === 1 && (
+              <BookSelection
+                books={harryPotterBooks}
+                onSelect={setSelectedBook}
+                selectedBook={selectedBook}
+              />
+            )}
+            {step === 2 && selectedBook && (
+              <ChapterSelection 
+                chapters={selectedBook.chapters}
+                onSelect={setSelectedChapters} 
+                selectedChapters={selectedChapters} 
+              />
+            )}
+            {step === 3 && selectedChapters.length === 1 && (
+              <PageSelection 
+                chapter={selectedChapters[0]}
+                onSelect={setSelectedPages} 
+                selectedPages={selectedPages} 
+              />
+            )}
+            <div className="flex justify-between mt-4">
+              {step > 1 && (
+                <Button onClick={handleBack} variant="outline">
+                  Back
+                </Button>
+              )}
+              <Button onClick={handleNext} disabled={isNextDisabled()}>
+                {step === 3 ? 'Generate Quiz' : 'Next'}
+              </Button>
+            </div>
+          </>
         )}
-        {step === 3 && selectedChapters.length === 1 && (
-          <PageSelection 
-            onSelect={setSelectedPages} 
-            selectedPages={selectedPages} 
-            selectedBook={selectedBook!}
-            selectedChapter={selectedChapters[0]}
-          />
-        )}
-        <div className="flex justify-between mt-4">
-          {step > 1 && (
-            <Button onClick={handleBack} variant="outline">
-              Back
-            </Button>
-          )}
-          <Button onClick={handleNext} disabled={isNextDisabled()}>
-            {step === 3 ? 'Generate Quiz' : 'Next'}
-          </Button>
-        </div>
       </CardContent>
     </Card>
   );

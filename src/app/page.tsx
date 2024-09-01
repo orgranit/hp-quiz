@@ -8,8 +8,10 @@ import { Question } from '@/types/quiz';
 export default function Home() {
   const [quizData, setQuizData] = useState<Question[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
   const handleWizardComplete = async (data: WizardData) => {
+    setLoading(true);
     try {
       const response = await fetch('/api/generate-questions', {
         method: 'POST',
@@ -30,6 +32,8 @@ export default function Home() {
     } catch (error) {
       console.error('Failed to generate questions:', error);
       setError(error instanceof Error ? error.message : 'An unexpected error occurred');
+    } finally {
+      setLoading(false);
     }
   };
 

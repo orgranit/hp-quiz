@@ -80,7 +80,7 @@ const HarryPotterQuiz: React.FC<HarryPotterQuizProps> = ({ questions }) => {
               key={index}
               onClick={() => handleAnswerSelect(option)}
               variant={selectedAnswer === option ? "secondary" : "outline"}
-              className="w-full justify-start text-left"
+              className="w-full justify-start text-left whitespace-normal break-words"
             >
               {option}
             </Button>

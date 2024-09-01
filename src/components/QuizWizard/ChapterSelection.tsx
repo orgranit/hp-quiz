@@ -1,28 +1,21 @@
 import React from 'react';
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { harryPotterBooks } from "@/data/harryPotterBooks";
+import { Chapter } from "@/data/harryPotterBooks";
 
 interface ChapterSelectionProps {
-  onSelect: (chapters: number[]) => void;
-  selectedChapters: number[];
-  selectedBook: number;
+  chapters: Chapter[];
+  onSelect: (chapters: Chapter[]) => void;
+  selectedChapters: Chapter[];
 }
 
-const ChapterSelection: React.FC<ChapterSelectionProps> = ({ onSelect, selectedChapters, selectedBook }) => {
-  const book = harryPotterBooks.find(b => b.id === selectedBook);
-  const chapters = book ? book.chapters : [];
-
-  const handleToggle = (chapterId: number) => {
-    const updatedChapters = selectedChapters.includes(chapterId)
-      ? selectedChapters.filter(c => c !== chapterId)
-      : [...selectedChapters, chapterId];
+const ChapterSelection: React.FC<ChapterSelectionProps> = ({ chapters, onSelect, selectedChapters }) => {
+  const handleToggle = (chapter: Chapter) => {
+    const updatedChapters = selectedChapters.includes(chapter)
+      ? selectedChapters.filter(c => c.id !== chapter.id)
+      : [...selectedChapters, chapter];
     onSelect(updatedChapters);
   };
-
-  if (!book) {
-    return <div>No book selected</div>;
-  }
 
   return (
     <div className="space-y-2 max-h-96 overflow-y-auto">
@@ -30,8 +23,8 @@ const ChapterSelection: React.FC<ChapterSelectionProps> = ({ onSelect, selectedC
         <div key={chapter.id} className="flex items-center space-x-2">
           <Checkbox
             id={`chapter-${chapter.id}`}
-            checked={selectedChapters.includes(chapter.id)}
-            onCheckedChange={() => handleToggle(chapter.id)}
+            checked={selectedChapters.some(c => c.id === chapter.id)}
+            onCheckedChange={() => handleToggle(chapter)}
           />
           <Label htmlFor={`chapter-${chapter.id}`}>{chapter.title}</Label>
         </div>

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { Question } from '@/types/quiz';
 import { WizardData } from '@/components/QuizWizard/QuizWizard';
-import { harryPotterBooks, Book, Chapter } from '@/data/harryPotterBooks';
+import { harryPotterBooks } from '@/data/harryPotterBooks';
 
 const apiKey = process.env.OPENAI_API_KEY;
 
@@ -31,8 +31,8 @@ export async function POST(request: Request) {
 }
 
 async function generateQuestions(data: WizardData): Promise<Question[]> {
-  const { bookNumber, chapters, pages } = data;
-  const book = harryPotterBooks.find(b => b.id === bookNumber);
+  const { bookId, chapters, pages } = data;
+  const book = harryPotterBooks.find(b => b.id === bookId);
   
   if (!book) {
     throw new Error('Book not found');
