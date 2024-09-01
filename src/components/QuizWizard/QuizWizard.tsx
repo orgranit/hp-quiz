@@ -54,9 +54,20 @@ const QuizWizard: React.FC<QuizWizardProps> = ({ onComplete }) => {
       </CardHeader>
       <CardContent>
         {step === 1 && <BookSelection onSelect={setSelectedBook} selectedBook={selectedBook} />}
-        {step === 2 && <ChapterSelection onSelect={setSelectedChapters} selectedChapters={selectedChapters} />}
+        {step === 2 && selectedBook && (
+          <ChapterSelection 
+            onSelect={setSelectedChapters} 
+            selectedChapters={selectedChapters} 
+            selectedBook={selectedBook}
+          />
+        )}
         {step === 3 && selectedChapters.length === 1 && (
-          <PageSelection onSelect={setSelectedPages} selectedPages={selectedPages} />
+          <PageSelection 
+            onSelect={setSelectedPages} 
+            selectedPages={selectedPages} 
+            selectedBook={selectedBook!}
+            selectedChapter={selectedChapters[0]}
+          />
         )}
         <div className="flex justify-between mt-4">
           {step > 1 && (

@@ -1,25 +1,26 @@
 import React from 'react';
 import { Button } from "@/components/ui/button";
+import { harryPotterBooks } from "@/data/harryPotterBooks";
 
 interface PageSelectionProps {
   onSelect: (pages: [number, number]) => void;
   selectedPages: [number, number] | null;
+  selectedBook: number;
+  selectedChapter: number;
 }
 
-const PageSelection: React.FC<PageSelectionProps> = ({ onSelect, selectedPages }) => {
-  const totalPages = 18; // Mock data, replace with actual page count later
+const PageSelection: React.FC<PageSelectionProps> = ({ onSelect, selectedPages, selectedBook, selectedChapter }) => {
+  const book = harryPotterBooks.find(b => b.id === selectedBook);
+  const chapter = book?.chapters.find(c => c.id === selectedChapter);
+  const totalPages = chapter ? chapter.pageEnd - chapter.pageStart + 1 : 0;
 
   const handlePageClick = (page: number) => {
-    if (!selectedPages) {
-      onSelect([page, page]);
-    } else if (selectedPages[0] === page && selectedPages[1] === page) {
-      onSelect([page, page]);
-    } else if (page < selectedPages[0]) {
-      onSelect([page, selectedPages[1]]);
+   if (selectedPages && selectedPages[0] === selectedPages[1]) {
+      onSelect(selectedPages[0] < page ? [selectedPages[0], page] : [page, selectedPages[0]]);
     } else {
-      onSelect([selectedPages[0], page]);
-    }
+      onSelect([page, page]);
   };
+}
 
   const isSelected = (page: number) => {
     return selectedPages && page >= selectedPages[0] && page <= selectedPages[1];
@@ -27,7 +28,7 @@ const PageSelection: React.FC<PageSelectionProps> = ({ onSelect, selectedPages }
 
   return (
     <div className="grid grid-cols-6 gap-2">
-      {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+      {Array.from({ length: totalPages }, (_, i) => i + chapter!.pageStart).map((page) => (
         <Button
           key={page}
           onClick={() => handlePageClick(page)}
