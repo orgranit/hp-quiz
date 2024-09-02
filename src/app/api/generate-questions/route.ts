@@ -59,7 +59,7 @@ export async function POST(request: Request) {
     console.error('Failed to process questions:', error);
     // Log the full error object for debugging
     console.error('Full error object:', JSON.stringify(error, null, 2));
-    return NextResponse.json({ error: 'Failed to process questions', details: error.message }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to process questions', details: (error as Error).message }, { status: 500 });
   }
 }
 
