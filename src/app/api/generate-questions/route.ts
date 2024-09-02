@@ -48,6 +48,8 @@ export async function POST(request: Request) {
         questions = [...questions, ...convertedQuestions];
       } catch (generateError) {
         console.error('Error generating additional questions:', generateError);
+        // Log the full error object for debugging
+        console.error('Full error object:', JSON.stringify(generateError, null, 2));
         // Continue with the questions we have from the database
       }
     }
@@ -55,7 +57,9 @@ export async function POST(request: Request) {
     return NextResponse.json(questions);
   } catch (error) {
     console.error('Failed to process questions:', error);
-    return NextResponse.json({ error: 'Failed to process questions' }, { status: 500 });
+    // Log the full error object for debugging
+    console.error('Full error object:', JSON.stringify(error, null, 2));
+    return NextResponse.json({ error: 'Failed to process questions', details: error.message }, { status: 500 });
   }
 }
 
@@ -163,9 +167,9 @@ Format the response as a JSON array of objects with the following structure:
 
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-4-1106-preview", // Using the latest and most capable model
+      model: "gpt-4-1106-preview",
       messages: [{ role: "user", content: prompt }],
-      response_format: { type: "json_object" }, // Ensure JSON response
+      response_format: { type: "json_object" },
     });
 
     const content = response.choices[0].message.content;
@@ -175,8 +179,22 @@ Format the response as a JSON array of objects with the following structure:
       throw new Error('Empty response from OpenAI');
     }
 
-    const parsedQuestions: OpenAIQuestionResponse[] = JSON.parse(content).questions;
-    return parsedQuestions;
+    const parsedContent = JSON.parse(content);
+    let parsedQuestions: OpenAIQuestionResponse[];
+
+    if (Array.isArray(parsedContent)) {
+      parsedQuestions = parsedContent;
+    } else if (parsedContent.questions && Array.isArray(parsedContent.questions)) {
+      parsedQuestions = parsedContent.questions;
+    } else if (typeof parsedContent === 'object') {
+      // If it's a single question object, wrap it in an array
+      parsedQuestions = [parsedContent as OpenAIQuestionResponse];
+    } else {
+      throw new Error('Unexpected response format from OpenAI');
+    }
+
+    // Ensure we have the correct number of questions
+    return parsedQuestions.slice(0, numQuestions);
   } catch (error) {
     console.error('Error generating questions:', error);
     throw error;
