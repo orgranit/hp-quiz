@@ -167,7 +167,7 @@ Format the response as a JSON array of objects with the following structure:
 
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-4-1106-preview",
+      model: "gpt-4o-mini",
       messages: [{ role: "user", content: prompt }],
       response_format: { type: "json_object" },
     });
